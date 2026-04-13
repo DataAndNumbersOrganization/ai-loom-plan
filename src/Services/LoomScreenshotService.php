@@ -45,8 +45,11 @@ class LoomScreenshotService
                 return [];
             }
 
+            $nodeModulesPath = base_path('node_modules');
+
             $command = sprintf(
-                '%s %s %s --output-dir=%s',
+                'NODE_PATH=%s %s %s %s --output-dir=%s',
+                escapeshellarg($nodeModulesPath),
                 escapeshellarg($nodePath),
                 escapeshellarg($scriptPath),
                 escapeshellarg($loomUrl),

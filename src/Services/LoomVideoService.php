@@ -289,7 +289,9 @@ class LoomVideoService
                 return $empty;
             }
 
-            $command = sprintf('%s %s %s 2>&1', escapeshellarg($nodePath), escapeshellarg($scriptPath), escapeshellarg($loomUrl));
+            $nodeModulesPath = base_path('node_modules');
+
+            $command = sprintf('NODE_PATH=%s %s %s %s 2>&1', escapeshellarg($nodeModulesPath), escapeshellarg($nodePath), escapeshellarg($scriptPath), escapeshellarg($loomUrl));
 
             Log::info('Loom: Running Playwright transcript extraction', ['command' => $command]);
 
