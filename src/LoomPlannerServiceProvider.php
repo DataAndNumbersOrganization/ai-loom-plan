@@ -1,0 +1,47 @@
+<?php
+
+namespace Dan\AiLoomPlanner;
+
+use Dan\AiLoomPlanner\Commands\LoomPlanCommand;
+use Dan\AiLoomPlanner\Commands\LoomTranscriptCommand;
+use Illuminate\Support\ServiceProvider;
+
+class LoomPlannerServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        $this->mergeConfigFrom($this->packageConfigPath(), 'loom-planner');
+    }
+
+    public function boot(): void
+    {
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                LoomPlanCommand::class,
+                LoomTranscriptCommand::class,
+            ]);
+
+            $this->publishes([
+                $this->packageConfigPath() => config_path('loom-planner.php'),
+            ], 'loom-planner-config');
+
+            $this->publishes([
+                $this->packageResourcePath('templates') => resource_path('views/vendor/loom-planner'),
+            ], 'loom-planner-templates');
+        }
+
+        $this->loadViewsFrom($this->packageResourcePath('templates'), 'loom-planner');
+    }
+
+    protected function packageConfigPath(): string
+    {
+        return dirname(__DIR__) . '/config/loom-planner.php';
+    }
+
+    public static function packageResourcePath(string $path = ''): string
+    {
+        $base = dirname(__DIR__) . '/resources';
+
+        return $path ? "{$base}/{$path}" : $base;
+    }
+}

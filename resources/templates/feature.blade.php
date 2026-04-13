@@ -1,0 +1,1 @@
+I have a Loom video walkthrough for a new feature I need to implement. Read the transcript and context file below, then build a detailed implementation plan.{{ $screenshotLine }} Save the implementation plan to `{{ $planPath }}`. If the Loom discusses new UX, please include steps to be taken in Playwright CLI to verify the changes implemented.

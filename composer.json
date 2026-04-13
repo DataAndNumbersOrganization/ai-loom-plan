@@ -1,0 +1,48 @@
+{
+    "name": "dan/ai-loom-planner",
+    "description": "Generate AI-powered implementation plans from Loom video walkthroughs.",
+    "keywords": ["laravel", "loom", "ai", "planning", "transcript", "prism"],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Dan",
+            "email": "dan@beautyboss.com"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/console": "^11.0 || ^12.0",
+        "illuminate/support": "^11.0 || ^12.0",
+        "illuminate/http": "^11.0 || ^12.0",
+        "prism-php/prism": "^0.99"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0 || ^10.0",
+        "phpunit/phpunit": "^11.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Dan\\AiLoomPlanner\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Dan\\AiLoomPlanner\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Dan\\AiLoomPlanner\\LoomPlannerServiceProvider"
+            ]
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit"
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}

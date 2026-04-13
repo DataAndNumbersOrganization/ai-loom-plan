@@ -1,0 +1,1 @@
+I have a Loom video walkthrough outlining an epic that needs to be broken down. Read the transcript and context file below, then build a comprehensive plan broken into discrete tasks.{{ $screenshotLine }} Save the implementation plan to `{{ $planPath }}`.
