@@ -270,7 +270,7 @@ class LoomVideoService
     protected function fetchTranscriptViaPlaywright(string $videoId): array
     {
         $empty = ['text' => null, 'segments' => []];
-        $scriptPath = LoomPlannerServiceProvider::packageResourcePath('scripts/loom-transcript.js');
+        $scriptPath = LoomPlannerServiceProvider::packageResourcePath('scripts/loom-transcript.cjs');
 
         if (!file_exists($scriptPath)) {
             Log::warning('Loom Playwright script not found', ['path' => $scriptPath]);

@@ -4,7 +4,7 @@
  * Uses Playwright to load a Loom video page, wait for the transcript
  * to render client-side, and extract it.
  *
- * Usage: node loom-transcript.js <loom-url>
+ * Usage: node loom-transcript.cjs <loom-url>
  * Output: JSON to stdout with { text, segments, title, duration }
  */
 

@@ -22,7 +22,7 @@ class LoomScreenshotService
      */
     public function capture(string $videoId, ?int $duration = null, int $interval = 1): array
     {
-        $scriptPath = LoomPlannerServiceProvider::packageResourcePath('scripts/loom-screenshot.js');
+        $scriptPath = LoomPlannerServiceProvider::packageResourcePath('scripts/loom-screenshot.cjs');
 
         if (!file_exists($scriptPath)) {
             Log::warning('Loom screenshot script not found', ['path' => $scriptPath]);

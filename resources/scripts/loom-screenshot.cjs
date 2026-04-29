@@ -4,7 +4,7 @@
  * Uses Playwright to load a Loom video embed, capture frames at regular intervals,
  * and deduplicate using perceptual hashing.
  *
- * Usage: node loom-screenshot.js <loom-url> [--duration=SECONDS] [--output-dir=PATH] [--interval=SECONDS] [--debug]
+ * Usage: node loom-screenshot.cjs <loom-url> [--duration=SECONDS] [--output-dir=PATH] [--interval=SECONDS] [--debug]
  * Output: JSON to stdout with { screenshots: [{ path, timestamp, hash, formatted_time }] }
  */
 

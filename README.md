@@ -323,6 +323,42 @@ src/
     └── LoomScreenshotService.php    # Playwright screenshot capture & dedup
 ```
 
+The Playwright helper scripts (`resources/scripts/loom-transcript.cjs` and
+`loom-screenshot.cjs`) intentionally use the `.cjs` extension so Node loads
+them as CommonJS even when the consumer project's `package.json` declares
+`"type": "module"`. See [Troubleshooting](#troubleshooting) for context.
+
+## Troubleshooting
+
+### `ReferenceError: require is not defined in ES module scope`
+
+Fixed in **v1.0.1**. If you are pinned to `v1.0.0` and your project's
+`package.json` declares `"type": "module"`, the bundled `.js` Playwright scripts
+will fail with this error because Node treats every `.js` file as ESM. Bump to
+`^1.0.1` (`composer update dan/ai-loom-planner`) — the scripts now ship as
+`.cjs` so Node always parses them as CommonJS.
+
+### `Cannot find module '@playwright/test'`
+
+Install Playwright in your consuming project (the package looks up
+`@playwright/test` via `NODE_PATH=<your-project>/node_modules`):
+
+```bash
+npm install @playwright/test
+npx playwright install chromium
+```
+
+This is only required if you use `--screenshots` or hit the Playwright
+transcript fallback.
+
+### `node not found — cannot run Playwright transcript extraction`
+
+The package looks for `node` via `which node`, then falls back to
+`/usr/local/bin/node`, `/opt/homebrew/bin/node`, and `/usr/bin/node`. If your
+Node.js binary is somewhere else (e.g. nvm-managed), make sure that path is on
+the PHP process's `PATH` (Laravel Herd / valet / Octane workers may have a
+different `PATH` from your interactive shell).
+
 ## Testing
 
 ```bash
