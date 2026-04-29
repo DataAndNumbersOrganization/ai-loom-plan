@@ -47,7 +47,10 @@ return [
     | Templates Directory
     |--------------------------------------------------------------------------
     |
-    | Set to null to use the package's bundled templates.
+    | Path to a directory containing prompt Blade templates.
+    | Leave as null to use the package's bundled templates.
+    | If you publish templates with `vendor:publish --tag=loom-planner-templates`,
+    | set this to `resource_path('views/vendor/loom-planner')` to load them.
     |
     */
     'templates_dir' => null,

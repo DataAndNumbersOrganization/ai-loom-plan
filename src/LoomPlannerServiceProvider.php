@@ -15,6 +15,8 @@ class LoomPlannerServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        $templatesPath = $this->packageResourcePath('templates');
+
         if ($this->app->runningInConsole()) {
             $this->commands([
                 LoomPlanCommand::class,
@@ -25,12 +27,16 @@ class LoomPlannerServiceProvider extends ServiceProvider
                 $this->packageConfigPath() => config_path('loom-planner.php'),
             ], 'loom-planner-config');
 
-            $this->publishes([
-                $this->packageResourcePath('templates') => resource_path('views/vendor/loom-planner'),
-            ], 'loom-planner-templates');
+            if (is_dir($templatesPath)) {
+                $this->publishes([
+                    $templatesPath => resource_path('views/vendor/loom-planner'),
+                ], 'loom-planner-templates');
+            }
         }
 
-        $this->loadViewsFrom($this->packageResourcePath('templates'), 'loom-planner');
+        if (is_dir($templatesPath)) {
+            $this->loadViewsFrom($templatesPath, 'loom-planner');
+        }
     }
 
     protected function packageConfigPath(): string

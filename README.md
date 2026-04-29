@@ -17,7 +17,7 @@ This Laravel package watches a Loom recording, extracts the transcript and scree
 | Dependency | Version |
 |---|---|
 | PHP | 8.2+ |
-| Laravel | 11.x or 12.x |
+| Laravel | 11.x, 12.x, or 13.x |
 | Node.js | 18+ (for Playwright scripts) |
 | Playwright | `@playwright/test` installed in your project |
 
@@ -118,9 +118,10 @@ return [
     | Templates Directory
     |--------------------------------------------------------------------------
     |
-    | Path to the directory containing prompt Blade templates.
-    | Set to null to use the package's built-in templates.
-    | If you publish templates, this is auto-set to your app's resource path.
+    | Path to a directory containing prompt Blade templates.
+    | Leave as null to use the package's bundled templates.
+    | If you publish templates with `vendor:publish --tag=loom-planner-templates`,
+    | set this to `resource_path('views/vendor/loom-planner')` to load them.
     |
     */
     'templates_dir' => null,
@@ -335,6 +336,13 @@ The test suite covers:
 
 See [`tests/`](tests/) for the complete test suite.
 
+## Versioning
+
+This package follows [Semantic Versioning](https://semver.org/). The public API
+surface — artisan command signatures, service class signatures, config keys,
+and publish tags — is covered by semver from `v1.0.0` onwards. See
+[`CHANGELOG.md`](CHANGELOG.md) for release notes.
+
 ## License
 
-MIT
+MIT — see [`LICENSE`](LICENSE) for the full text.
