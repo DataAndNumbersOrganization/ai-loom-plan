@@ -8,7 +8,7 @@ return [
     |--------------------------------------------------------------------------
     */
     'provider' => env('LOOM_PLAN_AI_PROVIDER', 'anthropic'),
-    'model' => env('LOOM_PLAN_AI_MODEL', 'claude-sonnet-4-20250514'),
+    'model' => env('LOOM_PLAN_AI_MODEL', 'claude-sonnet-4-6'),
 
     /*
     |--------------------------------------------------------------------------

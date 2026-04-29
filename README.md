@@ -66,7 +66,7 @@ return [
     |
     */
     'provider' => env('LOOM_PLAN_AI_PROVIDER', 'anthropic'),
-    'model'    => env('LOOM_PLAN_AI_MODEL', 'claude-sonnet-4-20250514'),
+    'model'    => env('LOOM_PLAN_AI_MODEL', 'claude-sonnet-4-6'),
 
     /*
     |--------------------------------------------------------------------------
@@ -138,7 +138,7 @@ ANTHROPIC_API_KEY=your_key_here
 
 # Optional overrides
 LOOM_PLAN_AI_PROVIDER=anthropic
-LOOM_PLAN_AI_MODEL=claude-sonnet-4-20250514
+LOOM_PLAN_AI_MODEL=claude-sonnet-4-6
 LOOM_PLAN_MAX_TOKENS=8000
 LOOM_PLAN_OUTPUT_DIR=docs-and-plans/loom
 ```

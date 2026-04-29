@@ -15,7 +15,7 @@ class LoomPlanService
 
     public function __construct()
     {
-        $this->model = config('loom-planner.model', 'claude-sonnet-4-20250514');
+        $this->model = config('loom-planner.model', 'claude-sonnet-4-6');
         $this->provider = config('loom-planner.provider', 'anthropic');
         $this->appName = config('loom-planner.app_name') ?? config('app.name', 'MyApp');
         $this->techStack = config('loom-planner.tech_stack') ?? $this->defaultTechStack();

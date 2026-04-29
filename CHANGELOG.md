@@ -5,6 +5,15 @@ All notable changes to `dan/ai-loom-planner` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2026-04-29
+
+### Changed
+
+- Default Anthropic model bumped from `claude-sonnet-4-20250514` to
+  `claude-sonnet-4-6`. Consumers who set `LOOM_PLAN_AI_MODEL` (or
+  `loom-planner.model` in a published config) are unaffected; everyone else
+  picks up the newer model on next request.
+
 ## [1.0.2] - 2026-04-29
 
 ### Fixed
@@ -60,6 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Laravel 11.x, 12.x, and 13.x support.
 - PHPUnit test suite with Orchestra Testbench.
 
+[1.0.3]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.3
 [1.0.2]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.2
 [1.0.1]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.1
 [1.0.0]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.0

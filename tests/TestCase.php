@@ -17,7 +17,7 @@ abstract class TestCase extends OrchestraTestCase
     protected function defineEnvironment($app): void
     {
         $app['config']->set('loom-planner.provider', 'anthropic');
-        $app['config']->set('loom-planner.model', 'claude-sonnet-4-20250514');
+        $app['config']->set('loom-planner.model', 'claude-sonnet-4-6');
         $app['config']->set('loom-planner.max_tokens', 8000);
         $app['config']->set('loom-planner.app_name', 'TestApp');
         $app['config']->set('loom-planner.output_dir', 'docs-and-plans/loom');
