@@ -103,9 +103,15 @@ class LoomPlanCommand extends Command
             File::makeDirectory($contextsDir, 0755, true);
         }
 
-        // Persist screenshots alongside the plan
+        // Persist screenshots as a sibling of contexts/ (per README spec).
         if (!empty($screenshots)) {
-            $screenshots = $this->persistScreenshots($screenshots, $contextsDir, $filename, $loomData['transcript_segments'] ?? []);
+            $screenshots = $this->persistScreenshots(
+                $screenshots,
+                $outputDir,
+                $filename,
+                $loomData['transcript_segments'] ?? [],
+                $loomData['duration'] ?? null,
+            );
         }
 
         // Generate plan or output prompt
@@ -151,10 +157,15 @@ class LoomPlanCommand extends Command
     }
 
     /**
-     * @return array<int, array{path: string, timestamp: int, hash: string|null, formatted_time: string}>
+     * @return array<int, array{path: string, timestamp: int, hash: string|null, formatted_time: string, label: string}>
      */
-    protected function persistScreenshots(array $screenshots, string $outputDir, string $planFilename, array $transcriptSegments = []): array
-    {
+    protected function persistScreenshots(
+        array $screenshots,
+        string $outputDir,
+        string $planFilename,
+        array $transcriptSegments = [],
+        ?int $duration = null,
+    ): array {
         $screenshotDir = "{$outputDir}/screenshots";
         if (!File::isDirectory($screenshotDir)) {
             File::makeDirectory($screenshotDir, 0755, true);
@@ -171,10 +182,7 @@ class LoomPlanCommand extends Command
             $timestamp = $screenshot['timestamp'] ?? 0;
             $secondsPadded = str_pad($timestamp, 4, '0', STR_PAD_LEFT);
 
-            $slug = 'frame';
-            if (!empty($transcriptSegments)) {
-                $slug = $this->generateSlugFromTranscript($timestamp, $transcriptSegments);
-            }
+            $slug = static::generateSlugFromTranscript($timestamp, $transcriptSegments, $duration);
 
             $ext = pathinfo($screenshot['path'], PATHINFO_EXTENSION) ?: 'jpg';
             $destFilename = "{$baseName}-{$secondsPadded}-{$slug}.{$ext}";
@@ -184,36 +192,79 @@ class LoomPlanCommand extends Command
 
             @unlink($screenshot['path']);
             $screenshot['path'] = $destPath;
+            $screenshot['label'] = $slug;
             $persisted[] = $screenshot;
         }
 
         return $persisted;
     }
 
-    protected function generateSlugFromTranscript(int $timestamp, array $transcriptSegments): string
-    {
+    /**
+     * Derive a short slug describing what the presenter was saying near the
+     * given timestamp. Falls back to a proportional word window from the
+     * concatenated transcript when timestamp metadata is sparse (e.g. the
+     * transcript was returned as a single segment, or all segments share
+     * `ts: null`).
+     */
+    public static function generateSlugFromTranscript(
+        int $timestamp,
+        array $transcriptSegments,
+        ?int $duration = null,
+    ): string {
         if (empty($transcriptSegments)) {
             return 'frame';
         }
 
-        $closestSegment = null;
-        $minDistance = PHP_INT_MAX;
+        $tsValues = array_filter(
+            array_map(fn ($s) => $s['ts'] ?? null, $transcriptSegments),
+            fn ($v) => $v !== null,
+        );
+        $hasUsefulTs = count(array_unique($tsValues)) > 1;
 
-        foreach ($transcriptSegments as $segment) {
-            $segmentTs = $segment['ts'] ?? 0;
-            $distance = abs($segmentTs - $timestamp);
+        if ($hasUsefulTs) {
+            $closestSegment = null;
+            $minDistance = PHP_INT_MAX;
 
-            if ($distance < $minDistance) {
-                $minDistance = $distance;
-                $closestSegment = $segment;
+            foreach ($transcriptSegments as $segment) {
+                $segmentTs = $segment['ts'] ?? 0;
+                $distance = abs($segmentTs - $timestamp);
+
+                if ($distance < $minDistance) {
+                    $minDistance = $distance;
+                    $closestSegment = $segment;
+                }
+            }
+
+            if ($closestSegment && !empty($closestSegment['text'])) {
+                return static::slugFromWords($closestSegment['text']);
             }
         }
 
-        if (!$closestSegment || empty($closestSegment['text'])) {
+        // Fallback: proportional word window from the concatenated transcript.
+        $allText = trim(implode(' ', array_filter(array_column($transcriptSegments, 'text'))));
+        if ($allText === '') {
             return 'frame';
         }
 
-        $text = $closestSegment['text'];
+        $words = str_word_count($allText, 1);
+        if (empty($words)) {
+            return 'frame';
+        }
+
+        $totalWords = count($words);
+        $windowSize = min(6, $totalWords);
+        $maxStart = max(0, $totalWords - $windowSize);
+        $ratio = ($duration && $duration > 0)
+            ? max(0.0, min($timestamp / $duration, 1.0))
+            : 0.0;
+        $startIndex = (int) floor($ratio * $maxStart);
+        $window = array_slice($words, $startIndex, $windowSize);
+
+        return Str::slug(implode(' ', $window)) ?: 'frame';
+    }
+
+    protected static function slugFromWords(string $text): string
+    {
         $words = str_word_count($text, 1);
         $shortText = implode(' ', array_slice($words, 0, 6));
 

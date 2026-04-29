@@ -5,6 +5,28 @@ All notable changes to `dan/ai-loom-planner` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2026-04-29
+
+### Fixed
+
+- Screenshots are now persisted under `<output_dir>/screenshots/` (a sibling
+  of `contexts/`) as documented in the README, instead of being nested at
+  `<output_dir>/contexts/screenshots/`.
+- Each captured screenshot now carries a populated `label` derived from the
+  transcript, so the AI prompt and the context manifest no longer report
+  `"label": "unknown"` for every frame.
+- Slug derivation no longer collapses to a single value when the transcript
+  is returned as one big segment or when every segment has `ts: null`. In
+  that case `generateSlugFromTranscript` falls back to a proportional word
+  window from the concatenated transcript, so each screenshot gets a
+  distinct, position-appropriate slug.
+
+### Changed
+
+- `LoomPlanCommand::generateSlugFromTranscript()` is now `public static` so
+  it can be called directly from tests and external integrations. It also
+  takes an optional `$duration` parameter to enable the proportional fallback.
+
 ## [1.0.1] - 2026-04-29
 
 ### Fixed
@@ -38,5 +60,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Laravel 11.x, 12.x, and 13.x support.
 - PHPUnit test suite with Orchestra Testbench.
 
+[1.0.2]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.2
 [1.0.1]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.1
 [1.0.0]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.0

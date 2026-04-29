@@ -322,4 +322,118 @@ class LoomPlanCommandTest extends TestCase
             ->expectsOutputToContain('Failed to fetch Loom video')
             ->assertExitCode(1);
     }
+
+    // ─── Screenshot persistence ─────────────────────────────────────
+
+    /**
+     * Build N temporary JPEG files at evenly-spaced timestamps and return them
+     * in the shape LoomScreenshotService::capture() produces.
+     */
+    protected function fakeCapturedScreenshots(int $count, int $intervalSecs = 10): array
+    {
+        $tmpDir = sys_get_temp_dir() . '/loom-plan-screenshots-' . uniqid();
+        mkdir($tmpDir, 0755, true);
+
+        $screenshots = [];
+        for ($i = 0; $i < $count; $i++) {
+            $ts = $i * $intervalSecs;
+            $path = "{$tmpDir}/raw-{$ts}.jpg";
+            file_put_contents($path, 'fake-jpeg-bytes');
+            $screenshots[] = [
+                'path' => $path,
+                'timestamp' => $ts,
+                'hash' => null,
+                'formatted_time' => sprintf('%dm%02ds', floor($ts / 60), $ts % 60),
+            ];
+        }
+
+        return $screenshots;
+    }
+
+    /** @test */
+    public function it_persists_screenshots_as_a_sibling_of_contexts(): void
+    {
+        $this->mockVideoService([
+            'duration' => 120,
+            'transcript_segments' => [
+                ['text' => 'one two three four five six seven eight nine ten eleven twelve', 'ts' => 0],
+            ],
+        ]);
+        $this->mockScreenshotService($this->fakeCapturedScreenshots(3));
+
+        $this->artisan('loom:plan', [
+            'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
+            '--screenshots' => '10',
+        ])->assertExitCode(0);
+
+        $this->assertDirectoryExists("{$this->outputDir}/screenshots");
+        $this->assertDirectoryDoesNotExist(
+            "{$this->outputDir}/contexts/screenshots",
+            'screenshots/ must be a sibling of contexts/, not nested inside it',
+        );
+        $this->assertNotEmpty(glob("{$this->outputDir}/screenshots/*.jpg"));
+    }
+
+    /** @test */
+    public function it_writes_meaningful_labels_in_the_context_file(): void
+    {
+        $this->mockVideoService([
+            'duration' => 120,
+            'transcript_segments' => [
+                ['text' => 'opening the dashboard now', 'ts' => 0],
+                ['text' => 'clicking the save button', 'ts' => 60],
+                ['text' => 'final review of validation errors', 'ts' => 110],
+            ],
+        ]);
+        $this->mockScreenshotService($this->fakeCapturedScreenshots(3));
+
+        $this->artisan('loom:plan', [
+            'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
+            '--screenshots' => '10',
+        ])->assertExitCode(0);
+
+        $contextFiles = glob("{$this->outputDir}/contexts/*-context.md");
+        $this->assertNotEmpty($contextFiles);
+        $context = file_get_contents($contextFiles[0]);
+
+        // The placeholder "unknown" must NOT appear in the screenshot manifest.
+        $this->assertStringNotContainsString('"label": "unknown"', $context);
+        // At least one of the segment-derived slugs should appear.
+        $this->assertMatchesRegularExpression(
+            '/(opening-the-dashboard|clicking-the-save|final-review-of-validation)/',
+            $context,
+        );
+    }
+
+    /** @test */
+    public function it_produces_distinct_slugs_when_transcript_has_a_single_segment(): void
+    {
+        $this->mockVideoService([
+            'duration' => 120,
+            'transcript_segments' => [[
+                'text' => 'one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen',
+                'ts' => 0,
+            ]],
+        ]);
+        $this->mockScreenshotService($this->fakeCapturedScreenshots(3, 60));
+
+        $this->artisan('loom:plan', [
+            'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
+            '--screenshots' => '60',
+        ])->assertExitCode(0);
+
+        $files = glob("{$this->outputDir}/screenshots/*.jpg");
+        $this->assertCount(3, $files);
+
+        // Strip the timestamp prefix and assert the slug portions differ.
+        $slugs = array_map(
+            fn ($p) => preg_replace('/^.*-\d{4}-(.*)\.jpg$/', '$1', basename($p)),
+            $files,
+        );
+        $this->assertSame(
+            count($slugs),
+            count(array_unique($slugs)),
+            'Each screenshot should get a distinct slug from the proportional fallback',
+        );
+    }
 }
