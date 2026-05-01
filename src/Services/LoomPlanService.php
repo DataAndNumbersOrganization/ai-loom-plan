@@ -26,10 +26,10 @@ class LoomPlanService
      *
      * @param  array<int, array{path: string, timestamp: int, label: string, formatted_time: string}>  $screenshots
      */
-    public function generatePlan(array $loomData, array $screenshots = []): string
+    public function generatePlan(array $loomData, array $screenshots = [], string $template = 'feature'): string
     {
         $context = $this->formatContext($loomData, $screenshots);
-        $prompt = $this->buildPrompt($context);
+        $prompt = $this->buildPrompt($context, $template);
         $additionalContent = $this->buildImageContent($screenshots);
 
         try {
@@ -84,18 +84,6 @@ class LoomPlanService
     }
 
     /**
-     * Build the full prompt text for external use (prompt-only mode).
-     *
-     * @param  array<int, array{path: string, timestamp: int, label: string, formatted_time: string}>  $screenshots
-     */
-    public function buildPromptForOutput(array $loomData, array $screenshots = []): string
-    {
-        $context = $this->formatContext($loomData, $screenshots);
-
-        return $this->buildPrompt($context);
-    }
-
-    /**
      * @param  array<int, array{path: string, timestamp: int, label: string, formatted_time: string}>  $screenshots
      */
     protected function formatContext(array $loomData, array $screenshots = []): array
@@ -135,14 +123,37 @@ class LoomPlanService
         return $context;
     }
 
-    protected function buildPrompt(array $context): string
+    /**
+     * Build the prompt text without calling the AI (useful for testing and debugging).
+     *
+     * @param  array<int, array{path: string, timestamp: int, label: string, formatted_time: string}>  $screenshots
+     */
+    public function buildPromptText(array $loomData, array $screenshots = [], string $template = 'feature'): string
+    {
+        $context = $this->formatContext($loomData, $screenshots);
+
+        return $this->buildPrompt($context, $template);
+    }
+
+    protected function templateGoal(string $template): string
+    {
+        return match ($template) {
+            'bug'           => 'diagnose the bug demonstrated and produce a fix plan',
+            'epic'          => 'break down the epic into discrete, prioritised implementation tasks',
+            'documentation' => 'convert this walkthrough into clear, admin-facing documentation (avoid technical jargon; target operations/support staff)',
+            default         => 'produce a comprehensive implementation plan for the feature described',
+        };
+    }
+
+    protected function buildPrompt(array $context, string $template = 'feature'): string
     {
         $contextJson = json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $appName = $this->appName;
         $techStack = $this->techStack;
+        $goal = $this->templateGoal($template);
 
         return <<<PROMPT
-You are a senior software engineer and technical lead analyzing a Loom video walkthrough to create a comprehensive implementation plan.
+You are a senior software engineer and technical lead analyzing a Loom video walkthrough. Your goal is to {$goal}.
 
 ## Context
 {$contextJson}

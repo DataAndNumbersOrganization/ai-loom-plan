@@ -2,12 +2,10 @@
 
 namespace Dan\AiLoomPlanner\Commands;
 
-use Dan\AiLoomPlanner\LoomPlannerServiceProvider;
 use Dan\AiLoomPlanner\Services\LoomPlanService;
 use Dan\AiLoomPlanner\Services\LoomScreenshotService;
 use Dan\AiLoomPlanner\Services\LoomVideoService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
@@ -16,8 +14,7 @@ class LoomPlanCommand extends Command
     protected $signature = 'loom:plan
                             {url : Loom video URL (e.g., https://www.loom.com/share/abc123...)}
                             {--screenshots=10 : Seconds between screenshot captures (1-60, 0 to disable)}
-                            {--template=feature : Prompt template — feature, bug, epic, or documentation}
-                            {--ai : Send prompt to AI and save the generated plan (default: output prompt only)}
+                            {--template=feature : Plan template — feature, bug, epic, or documentation}
                             {--output= : Custom output filename (defaults to video title based name)}';
 
     protected $description = 'Generate an AI-powered implementation plan from a Loom video walkthrough';
@@ -34,7 +31,7 @@ class LoomPlanCommand extends Command
     {
         $url = $this->argument('url');
         $screenshotInterval = max(0, min(60, (int) ($this->option('screenshots') ?? 10)));
-        $sendToAi = $this->option('ai');
+        $template = $this->option('template');
         $customOutput = $this->option('output');
 
         if (!$this->loomVideoService->extractVideoId($url)) {
@@ -97,13 +94,7 @@ class LoomPlanCommand extends Command
 
         $filename = $this->determineFilename($customOutput, $loomData['title']);
 
-        // Ensure contexts directory exists
-        $contextsDir = "{$outputDir}/contexts";
-        if (!File::isDirectory($contextsDir)) {
-            File::makeDirectory($contextsDir, 0755, true);
-        }
-
-        // Persist screenshots as a sibling of contexts/ (per README spec).
+        // Persist screenshots
         if (!empty($screenshots)) {
             $screenshots = $this->persistScreenshots(
                 $screenshots,
@@ -114,33 +105,21 @@ class LoomPlanCommand extends Command
             );
         }
 
-        // Generate plan or output prompt
-        if ($sendToAi) {
-            if (!empty($screenshots)) {
-                ini_set('memory_limit', '512M');
-            }
-
-            $this->info('🤖 Generating implementation plan with AI...');
-            $plan = $this->loomPlanService->generatePlan($loomData, $screenshots);
-
-            $outputPath = "{$outputDir}/{$filename}";
-            File::put($outputPath, $plan);
-
-            $this->newLine();
-            $this->info("✅ Implementation plan saved to: {$outputPath}");
-            $this->newLine();
-
-            $this->displaySummary($loomData, $outputPath, $screenshots);
-        } else {
-            $contextMarkdown = $this->loomPlanService->buildPromptForOutput($loomData, $screenshots);
-            $contextFilename = preg_replace('/\.md$/', '-context.md', $filename);
-            $contextPath = "{$contextsDir}/{$contextFilename}";
-            File::put($contextPath, $contextMarkdown);
-
-            $template = $this->option('template');
-            $planPath = "{$outputDir}/{$filename}";
-            $this->outputAgentPrompt($template, $contextPath, $planPath, $screenshots);
+        if (!empty($screenshots)) {
+            ini_set('memory_limit', '512M');
         }
+
+        $this->info('🤖 Generating implementation plan with AI...');
+        $plan = $this->loomPlanService->generatePlan($loomData, $screenshots, $template);
+
+        $outputPath = "{$outputDir}/{$filename}";
+        File::put($outputPath, $plan);
+
+        $this->newLine();
+        $this->info("✅ Implementation plan saved to: {$outputPath}");
+        $this->newLine();
+
+        $this->displaySummary($loomData, $outputPath, $screenshots);
 
         return 0;
     }
@@ -269,53 +248,6 @@ class LoomPlanCommand extends Command
         $shortText = implode(' ', array_slice($words, 0, 6));
 
         return Str::slug($shortText) ?: 'frame';
-    }
-
-    protected function outputAgentPrompt(string $template, string $contextPath, string $planPath, array $screenshots): void
-    {
-        $screenshotLine = !empty($screenshots)
-            ? ' Screenshots from key moments in the video are attached below for visual context.'
-            : '';
-
-        $prompt = $this->renderTemplate($template, [
-            'planPath' => $planPath,
-            'screenshotLine' => $screenshotLine,
-        ]);
-
-        $this->newLine();
-        $this->line('─── Copy below ───');
-        $this->newLine();
-        $this->line(trim($prompt));
-        $this->newLine();
-        $this->line($contextPath);
-        foreach ($screenshots as $s) {
-            $this->line($s['path']);
-        }
-        $this->newLine();
-        $this->line('─── End ───');
-    }
-
-    protected function renderTemplate(string $template, array $data): string
-    {
-        // Check config override first, then package templates
-        $templatesDir = config('loom-planner.templates_dir');
-
-        if ($templatesDir && file_exists("{$templatesDir}/{$template}.blade.php")) {
-            $templatePath = "{$templatesDir}/{$template}.blade.php";
-        } else {
-            $templatePath = LoomPlannerServiceProvider::packageResourcePath("templates/{$template}.blade.php");
-        }
-
-        if (!file_exists($templatePath)) {
-            $this->warn("Template '{$template}' not found at {$templatePath}, falling back to 'feature'");
-            $templatePath = LoomPlannerServiceProvider::packageResourcePath('templates/feature.blade.php');
-        }
-
-        if (!file_exists($templatePath)) {
-            return "Read the transcript and context file below, then build a detailed implementation plan.{$data['screenshotLine']} Save the implementation plan to `{$data['planPath']}`.";
-        }
-
-        return Blade::render(file_get_contents($templatePath), $data);
     }
 
     protected function displaySummary(array $loomData, string $outputPath, array $screenshots = []): void

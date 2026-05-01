@@ -46,18 +46,10 @@ class LoomPlanCommandTest extends TestCase
         $this->app->instance(LoomScreenshotService::class, $mock);
     }
 
-    protected function mockPlanService(?string $plan = null, ?string $prompt = null): void
+    protected function mockPlanService(string $plan = '# Implementation Plan: Test'): void
     {
         $mock = Mockery::mock(LoomPlanService::class);
-
-        if ($plan !== null) {
-            $mock->shouldReceive('generatePlan')->andReturn($plan);
-        }
-
-        if ($prompt !== null) {
-            $mock->shouldReceive('buildPromptForOutput')->andReturn($prompt);
-        }
-
+        $mock->shouldReceive('generatePlan')->andReturn($plan);
         $this->app->instance(LoomPlanService::class, $mock);
     }
 
@@ -87,45 +79,10 @@ class LoomPlanCommandTest extends TestCase
             ->assertExitCode(1);
     }
 
-    // ─── Prompt-Only Mode (default, no --ai) ───────────────────────
+    // ─── Plan Generation ───────────────────────────────────────────
 
     /** @test */
-    public function it_outputs_copy_pastable_prompt_without_ai_flag(): void
-    {
-        $this->mockVideoService();
-        $this->mockScreenshotService();
-
-        $this->artisan('loom:plan', [
-            'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
-            '--screenshots' => '0',
-        ])
-            ->expectsOutputToContain('Fetching Loom video data')
-            ->expectsOutputToContain('Copy below')
-            ->assertExitCode(0);
-    }
-
-    /** @test */
-    public function it_saves_context_file_in_prompt_only_mode(): void
-    {
-        $this->mockVideoService();
-        $this->mockScreenshotService();
-
-        $this->artisan('loom:plan', [
-            'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
-            '--screenshots' => '0',
-        ])->assertExitCode(0);
-
-        $contextsDir = "{$this->outputDir}/contexts";
-        $this->assertDirectoryExists($contextsDir);
-
-        $contextFiles = glob("{$contextsDir}/*-context.md");
-        $this->assertNotEmpty($contextFiles, 'A context file should be created');
-    }
-
-    // ─── AI Mode (--ai) ────────────────────────────────────────────
-
-    /** @test */
-    public function it_generates_and_saves_plan_with_ai_flag(): void
+    public function it_generates_and_saves_plan(): void
     {
         $this->mockVideoService();
         $this->mockScreenshotService();
@@ -138,14 +95,12 @@ class LoomPlanCommandTest extends TestCase
 
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
-            '--ai' => true,
             '--screenshots' => '0',
         ])
             ->expectsOutputToContain('Generating implementation plan with AI')
             ->expectsOutputToContain('Implementation plan saved')
             ->assertExitCode(0);
 
-        // A plan file should exist
         $planFiles = glob("{$this->outputDir}/loom-plan-*.md");
         $this->assertNotEmpty($planFiles, 'A plan file should be saved');
         $this->assertStringContainsString('# Implementation Plan', file_get_contents($planFiles[0]));
@@ -157,6 +112,7 @@ class LoomPlanCommandTest extends TestCase
     public function it_captures_screenshots_at_specified_interval(): void
     {
         $this->mockVideoService();
+        $this->mockPlanService();
 
         $screenshotMock = Mockery::mock(LoomScreenshotService::class);
         $screenshotMock->shouldReceive('capture')
@@ -177,6 +133,7 @@ class LoomPlanCommandTest extends TestCase
     public function it_skips_screenshots_when_interval_is_zero(): void
     {
         $this->mockVideoService();
+        $this->mockPlanService();
 
         $screenshotMock = Mockery::mock(LoomScreenshotService::class);
         $screenshotMock->shouldNotReceive('capture');
@@ -192,6 +149,7 @@ class LoomPlanCommandTest extends TestCase
     public function it_clamps_screenshot_interval_to_valid_range(): void
     {
         $this->mockVideoService();
+        $this->mockPlanService();
 
         $screenshotMock = Mockery::mock(LoomScreenshotService::class);
         $screenshotMock->shouldReceive('capture')
@@ -223,7 +181,6 @@ class LoomPlanCommandTest extends TestCase
 
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
-            '--ai' => true,
             '--output' => 'my-custom-plan',
             '--screenshots' => '0',
         ])->assertExitCode(0);
@@ -243,7 +200,6 @@ class LoomPlanCommandTest extends TestCase
 
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
-            '--ai' => true,
             '--output' => 'already-has.md',
             '--screenshots' => '0',
         ])->assertExitCode(0);
@@ -265,7 +221,6 @@ class LoomPlanCommandTest extends TestCase
 
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
-            '--ai' => true,
             '--screenshots' => '0',
         ])->assertExitCode(0);
 
@@ -275,10 +230,19 @@ class LoomPlanCommandTest extends TestCase
     // ─── Template Selection ────────────────────────────────────────
 
     /** @test */
-    public function it_uses_specified_template(): void
+    public function it_passes_template_to_plan_service(): void
     {
         $this->mockVideoService();
         $this->mockScreenshotService();
+
+        $planService = Mockery::mock(LoomPlanService::class);
+        $planService->shouldReceive('generatePlan')
+            ->withArgs(function ($loomData, $screenshots, $template) {
+                return $template === 'bug';
+            })
+            ->once()
+            ->andReturn('# Bug Fix Plan');
+        $this->app->instance(LoomPlanService::class, $planService);
 
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
@@ -297,6 +261,7 @@ class LoomPlanCommandTest extends TestCase
             'transcript_segments' => [],
         ]);
         $this->mockScreenshotService();
+        $this->mockPlanService();
 
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
@@ -351,7 +316,7 @@ class LoomPlanCommandTest extends TestCase
     }
 
     /** @test */
-    public function it_persists_screenshots_as_a_sibling_of_contexts(): void
+    public function it_persists_screenshots_to_screenshots_dir(): void
     {
         $this->mockVideoService([
             'duration' => 120,
@@ -360,6 +325,7 @@ class LoomPlanCommandTest extends TestCase
             ],
         ]);
         $this->mockScreenshotService($this->fakeCapturedScreenshots(3));
+        $this->mockPlanService();
 
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
@@ -367,15 +333,11 @@ class LoomPlanCommandTest extends TestCase
         ])->assertExitCode(0);
 
         $this->assertDirectoryExists("{$this->outputDir}/screenshots");
-        $this->assertDirectoryDoesNotExist(
-            "{$this->outputDir}/contexts/screenshots",
-            'screenshots/ must be a sibling of contexts/, not nested inside it',
-        );
         $this->assertNotEmpty(glob("{$this->outputDir}/screenshots/*.jpg"));
     }
 
     /** @test */
-    public function it_writes_meaningful_labels_in_the_context_file(): void
+    public function it_assigns_meaningful_labels_to_screenshots(): void
     {
         $this->mockVideoService([
             'duration' => 120,
@@ -387,21 +349,32 @@ class LoomPlanCommandTest extends TestCase
         ]);
         $this->mockScreenshotService($this->fakeCapturedScreenshots(3));
 
+        $capturedScreenshots = null;
+        $planService = Mockery::mock(LoomPlanService::class);
+        $planService->shouldReceive('generatePlan')
+            ->withArgs(function ($loomData, $screenshots, $template) use (&$capturedScreenshots) {
+                $capturedScreenshots = $screenshots;
+                return true;
+            })
+            ->andReturn('# Plan');
+        $this->app->instance(LoomPlanService::class, $planService);
+
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
             '--screenshots' => '10',
         ])->assertExitCode(0);
 
-        $contextFiles = glob("{$this->outputDir}/contexts/*-context.md");
-        $this->assertNotEmpty($contextFiles);
-        $context = file_get_contents($contextFiles[0]);
+        $this->assertNotNull($capturedScreenshots);
 
-        // The placeholder "unknown" must NOT appear in the screenshot manifest.
-        $this->assertStringNotContainsString('"label": "unknown"', $context);
+        // The placeholder "unknown" must NOT appear in the screenshot labels.
+        foreach ($capturedScreenshots as $screenshot) {
+            $this->assertNotEquals('unknown', $screenshot['label'] ?? 'unknown');
+        }
         // At least one of the segment-derived slugs should appear.
+        $labels = implode(' ', array_column($capturedScreenshots, 'label'));
         $this->assertMatchesRegularExpression(
             '/(opening-the-dashboard|clicking-the-save|final-review-of-validation)/',
-            $context,
+            $labels,
         );
     }
 
@@ -416,6 +389,7 @@ class LoomPlanCommandTest extends TestCase
             ]],
         ]);
         $this->mockScreenshotService($this->fakeCapturedScreenshots(3, 60));
+        $this->mockPlanService();
 
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',

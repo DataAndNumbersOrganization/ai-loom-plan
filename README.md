@@ -108,7 +108,7 @@ return [
     | Output Directory
     |--------------------------------------------------------------------------
     |
-    | Where generated plans, contexts, and screenshots are saved.
+    | Where generated plans and screenshots are saved.
     |
     */
     'output_dir' => env('LOOM_PLAN_OUTPUT_DIR', 'docs-and-plans/loom'),
@@ -148,11 +148,8 @@ LOOM_PLAN_OUTPUT_DIR=docs-and-plans/loom
 ### `loom:plan` — Generate an implementation plan
 
 ```bash
-# Basic — outputs a copy-pastable prompt (no AI call)
+# Generate a plan (fetches transcript, captures screenshots, calls AI)
 php artisan loom:plan https://www.loom.com/share/abc123def456...
-
-# Send directly to AI and save the generated plan
-php artisan loom:plan https://www.loom.com/share/abc123... --ai
 
 # Capture screenshots every 5 seconds (default: 10)
 php artisan loom:plan https://www.loom.com/share/abc123... --screenshots=5
@@ -160,7 +157,7 @@ php artisan loom:plan https://www.loom.com/share/abc123... --screenshots=5
 # Disable screenshots entirely
 php artisan loom:plan https://www.loom.com/share/abc123... --screenshots=0
 
-# Use the "bug" prompt template
+# Use the "bug" plan template
 php artisan loom:plan https://www.loom.com/share/abc123... --template=bug
 
 # Custom output filename
@@ -173,26 +170,12 @@ php artisan loom:plan https://www.loom.com/share/abc123... --output=my-feature-p
 |---|---|---|
 | `url` (argument) | Loom video URL | — (required) |
 | `--screenshots` | Seconds between screenshot captures (1–60, 0 to disable) | `10` |
-| `--template` | Prompt template: `feature`, `bug`, `epic`, or `documentation` | `feature` |
-| `--ai` | Send prompt to AI and save the generated plan | `false` (prompt-only) |
+| `--template` | Plan template: `feature`, `bug`, `epic`, or `documentation` | `feature` |
 | `--output` | Custom output filename | Auto-generated from video title |
 
 #### Workflow
 
-**Without `--ai` (default)** — the command builds a context file containing the transcript, metadata, and screenshot references, then prints a ready-to-paste prompt for your IDE agent (Cursor, Warp, Copilot, etc.):
-
-```
-─── Copy below ───
-
-I have a Loom video walkthrough for a new feature...
-
-docs-and-plans/loom/contexts/loom-plan-my-video-context.md
-docs-and-plans/loom/screenshots/loom-plan-my-video-0010-reviewing-the-dashboard.jpg
-
-─── End ───
-```
-
-**With `--ai`** — the command calls the AI directly and saves a complete Markdown plan:
+The command fetches the transcript, captures screenshots, calls the AI, and saves the generated plan:
 
 ```
 🎬 Fetching Loom video data...
@@ -283,16 +266,7 @@ The package ships with four prompt templates in `resources/templates/`:
 
 ### Customising templates
 
-After publishing (`vendor:publish --tag=loom-planner-templates`), templates are copied to `resources/views/vendor/loom-planner/`. Each template receives two variables:
-
-- `$planPath` — the file path where the plan will be saved
-- `$screenshotLine` — a sentence about attached screenshots (empty string if none)
-
-Example custom template:
-
-```blade
-Read the transcript below and create a migration plan for our Phoenix/Elixir app.{{ $screenshotLine }} Save the plan to `{{ $planPath }}`.
-```
+After publishing (`vendor:publish --tag=loom-planner-templates`), templates are copied to `resources/views/vendor/loom-planner/`. Each template influences the AI's goal by varying the opening instruction in the prompt.
 
 ## Output Structure
 
@@ -300,9 +274,7 @@ All generated files are saved under the configured `output_dir` (default: `docs-
 
 ```
 docs-and-plans/loom/
-├── loom-plan-my-feature.md              # Generated plan (--ai mode)
-├── contexts/
-│   └── loom-plan-my-feature-context.md  # Transcript + metadata (prompt-only mode)
+├── loom-plan-my-feature.md              # Generated plan
 └── screenshots/
     ├── loom-plan-my-feature-0000-intro-and-overview.jpg
     ├── loom-plan-my-feature-0010-reviewing-the-dashboard.jpg

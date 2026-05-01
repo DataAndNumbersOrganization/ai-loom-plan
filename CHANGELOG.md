@@ -5,6 +5,32 @@ All notable changes to `dan/ai-loom-planner` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] - 2026-05-01
+
+### Changed
+
+- `loom:plan` now always calls the AI — the `--ai` flag has been removed.
+  Running the command generates and saves a Markdown plan every time.
+- `--template` now varies the AI prompt goal directly (feature / bug / epic /
+  documentation) rather than rendering a copy-pastable agent prompt.
+- `LoomPlanService::generatePlan()` accepts a new `string $template = 'feature'`
+  parameter that is forwarded from the command.
+
+### Added
+
+- `LoomPlanService::buildPromptText()` — public helper that builds the prompt
+  without making an AI call (replaces the removed `buildPromptForOutput()` for
+  testing and debugging purposes).
+
+### Removed
+
+- `--ai` option from `loom:plan` (breaking — scripts that passed `--ai` must
+  remove the flag; the behaviour it enabled is now the default).
+- `LoomPlanService::buildPromptForOutput()` (breaking — use `buildPromptText()`
+  instead).
+- `contexts/` output subdirectory — context markdown files are no longer
+  written; the plan file is always the sole output.
+
 ## [1.0.3] - 2026-04-29
 
 ### Changed
@@ -69,6 +95,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Laravel 11.x, 12.x, and 13.x support.
 - PHPUnit test suite with Orchestra Testbench.
 
+[2.0.0]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v2.0.0
 [1.0.3]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.3
 [1.0.2]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.2
 [1.0.1]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.1

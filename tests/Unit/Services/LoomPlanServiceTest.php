@@ -25,7 +25,7 @@ class LoomPlanServiceTest extends TestCase
         $this->app['config']->set('loom-planner.model', 'gpt-4o');
 
         $service = app(LoomPlanService::class);
-        $prompt = $service->buildPromptForOutput($this->fakeLoomData());
+        $prompt = $service->buildPromptText($this->fakeLoomData());
 
         // The prompt should reference the app name from config
         $this->assertStringContainsString('TestApp', $prompt);
@@ -37,7 +37,7 @@ class LoomPlanServiceTest extends TestCase
         $this->app['config']->set('loom-planner.tech_stack', '- **Backend**: Phoenix/Elixir');
 
         $service = app(LoomPlanService::class);
-        $prompt = $service->buildPromptForOutput($this->fakeLoomData());
+        $prompt = $service->buildPromptText($this->fakeLoomData());
 
         $this->assertStringContainsString('Phoenix/Elixir', $prompt);
         $this->assertStringNotContainsString('Next.js', $prompt);
@@ -46,7 +46,7 @@ class LoomPlanServiceTest extends TestCase
     /** @test */
     public function it_uses_default_tech_stack_when_not_configured(): void
     {
-        $prompt = $this->service->buildPromptForOutput($this->fakeLoomData());
+        $prompt = $this->service->buildPromptText($this->fakeLoomData());
 
         $this->assertStringContainsString('Laravel', $prompt);
         $this->assertStringContainsString('Next.js', $prompt);
@@ -59,7 +59,7 @@ class LoomPlanServiceTest extends TestCase
     public function it_builds_prompt_with_loom_context(): void
     {
         $loomData = $this->fakeLoomData();
-        $prompt = $this->service->buildPromptForOutput($loomData);
+        $prompt = $this->service->buildPromptText($loomData);
 
         $this->assertStringContainsString($loomData['title'], $prompt);
         $this->assertStringContainsString($loomData['url'], $prompt);
@@ -77,7 +77,7 @@ class LoomPlanServiceTest extends TestCase
             ],
         ]);
 
-        $prompt = $this->service->buildPromptForOutput($loomData);
+        $prompt = $this->service->buildPromptText($loomData);
 
         $this->assertStringContainsString('[0:00]', $prompt);
         $this->assertStringContainsString('[1:05]', $prompt);
@@ -93,7 +93,7 @@ class LoomPlanServiceTest extends TestCase
             'transcript_segments' => [],
         ]);
 
-        $prompt = $this->service->buildPromptForOutput($loomData);
+        $prompt = $this->service->buildPromptText($loomData);
 
         $this->assertStringContainsString($loomData['title'], $prompt);
         $this->assertStringContainsString('"has_transcript": false', $prompt);
@@ -105,7 +105,7 @@ class LoomPlanServiceTest extends TestCase
         $loomData = $this->fakeLoomData();
         $screenshots = $this->fakeScreenshots(3);
 
-        $prompt = $this->service->buildPromptForOutput($loomData, $screenshots);
+        $prompt = $this->service->buildPromptText($loomData, $screenshots);
 
         $this->assertStringContainsString('SCREENSHOTS', $prompt);
         $this->assertStringContainsString('3 screenshot(s)', $prompt);
@@ -115,7 +115,7 @@ class LoomPlanServiceTest extends TestCase
     /** @test */
     public function it_omits_screenshot_guidelines_when_no_screenshots(): void
     {
-        $prompt = $this->service->buildPromptForOutput($this->fakeLoomData(), []);
+        $prompt = $this->service->buildPromptText($this->fakeLoomData(), []);
 
         $this->assertStringNotContainsString('SCREENSHOTS', $prompt);
     }
@@ -128,7 +128,7 @@ class LoomPlanServiceTest extends TestCase
         $longTranscript = str_repeat('word ', 5000); // ~25000 chars
         $loomData = $this->fakeLoomData(['transcript_text' => $longTranscript]);
 
-        $prompt = $this->service->buildPromptForOutput($loomData);
+        $prompt = $this->service->buildPromptText($loomData);
 
         // The transcript in the prompt context should be capped at ~12000 chars
         $this->assertStringContainsString('...', $prompt);
