@@ -5,6 +5,24 @@ All notable changes to `dan/ai-loom-planner` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] - 2026-05-01
+
+### Removed
+
+- AI plan generation entirely — `LoomPlanService` no longer depends on Prism
+  and makes no outbound API calls. The command outputs a ready-to-paste prompt
+  for use with any AI agent (Warp, Cursor, Copilot, etc.).
+- `prism-php/prism` removed from `require`.
+- AI-specific config keys removed: `provider`, `model`, `max_tokens`.
+- `LoomPlanService::generatePlan()` removed (breaking — use `buildPromptText()`).
+- Fallback plan generation removed (no longer needed without AI).
+
+### Changed
+
+- `loom:plan` always produces a context file + copy-pastable agent prompt.
+- `LoomPlanService::buildPromptText()` is now the primary public API for the
+  service (no arguments changed from v2.0.0).
+
 ## [2.0.0] - 2026-05-01
 
 ### Changed
@@ -95,6 +113,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Laravel 11.x, 12.x, and 13.x support.
 - PHPUnit test suite with Orchestra Testbench.
 
+[3.0.0]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v3.0.0
 [2.0.0]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v2.0.0
 [1.0.3]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.3
 [1.0.2]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.2

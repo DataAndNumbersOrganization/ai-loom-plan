@@ -46,10 +46,10 @@ class LoomPlanCommandTest extends TestCase
         $this->app->instance(LoomScreenshotService::class, $mock);
     }
 
-    protected function mockPlanService(string $plan = '# Implementation Plan: Test'): void
+    protected function mockPlanService(string $prompt = 'Mock context prompt'): void
     {
         $mock = Mockery::mock(LoomPlanService::class);
-        $mock->shouldReceive('generatePlan')->andReturn($plan);
+        $mock->shouldReceive('buildPromptText')->andReturn($prompt);
         $this->app->instance(LoomPlanService::class, $mock);
     }
 
@@ -79,31 +79,38 @@ class LoomPlanCommandTest extends TestCase
             ->assertExitCode(1);
     }
 
-    // ─── Plan Generation ───────────────────────────────────────────
+    // ─── Context Output ───────────────────────────────────────────
 
     /** @test */
-    public function it_generates_and_saves_plan(): void
+    public function it_outputs_copy_pastable_prompt(): void
     {
         $this->mockVideoService();
         $this->mockScreenshotService();
-
-        $planService = Mockery::mock(LoomPlanService::class);
-        $planService->shouldReceive('generatePlan')
-            ->once()
-            ->andReturn('# Implementation Plan: Test Feature');
-        $this->app->instance(LoomPlanService::class, $planService);
+        $this->mockPlanService();
 
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
             '--screenshots' => '0',
         ])
-            ->expectsOutputToContain('Generating implementation plan with AI')
-            ->expectsOutputToContain('Implementation plan saved')
+            ->expectsOutputToContain('Fetching Loom video data')
+            ->expectsOutputToContain('Copy below')
             ->assertExitCode(0);
+    }
 
-        $planFiles = glob("{$this->outputDir}/loom-plan-*.md");
-        $this->assertNotEmpty($planFiles, 'A plan file should be saved');
-        $this->assertStringContainsString('# Implementation Plan', file_get_contents($planFiles[0]));
+    /** @test */
+    public function it_saves_context_file(): void
+    {
+        $this->mockVideoService();
+        $this->mockScreenshotService();
+        $this->mockPlanService();
+
+        $this->artisan('loom:plan', [
+            'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
+            '--screenshots' => '0',
+        ])->assertExitCode(0);
+
+        $contextFiles = glob("{$this->outputDir}/contexts/*-context.md");
+        $this->assertNotEmpty($contextFiles, 'A context file should be created');
     }
 
     // ─── Screenshots ───────────────────────────────────────────────
@@ -176,7 +183,7 @@ class LoomPlanCommandTest extends TestCase
         $this->mockScreenshotService();
 
         $planService = Mockery::mock(LoomPlanService::class);
-        $planService->shouldReceive('generatePlan')->andReturn('# Plan');
+        $planService->shouldReceive('buildPromptText')->andReturn('Mock context');
         $this->app->instance(LoomPlanService::class, $planService);
 
         $this->artisan('loom:plan', [
@@ -185,7 +192,7 @@ class LoomPlanCommandTest extends TestCase
             '--screenshots' => '0',
         ])->assertExitCode(0);
 
-        $this->assertFileExists("{$this->outputDir}/my-custom-plan.md");
+        $this->assertFileExists("{$this->outputDir}/contexts/my-custom-plan-context.md");
     }
 
     /** @test */
@@ -195,7 +202,7 @@ class LoomPlanCommandTest extends TestCase
         $this->mockScreenshotService();
 
         $planService = Mockery::mock(LoomPlanService::class);
-        $planService->shouldReceive('generatePlan')->andReturn('# Plan');
+        $planService->shouldReceive('buildPromptText')->andReturn('Mock context');
         $this->app->instance(LoomPlanService::class, $planService);
 
         $this->artisan('loom:plan', [
@@ -205,8 +212,8 @@ class LoomPlanCommandTest extends TestCase
         ])->assertExitCode(0);
 
         // Should not double the extension
-        $this->assertFileExists("{$this->outputDir}/already-has.md");
-        $this->assertFileDoesNotExist("{$this->outputDir}/already-has.md.md");
+        $this->assertFileExists("{$this->outputDir}/contexts/already-has-context.md");
+        $this->assertFileDoesNotExist("{$this->outputDir}/contexts/already-has.md-context.md");
     }
 
     /** @test */
@@ -216,7 +223,7 @@ class LoomPlanCommandTest extends TestCase
         $this->mockScreenshotService();
 
         $planService = Mockery::mock(LoomPlanService::class);
-        $planService->shouldReceive('generatePlan')->andReturn('# Plan');
+        $planService->shouldReceive('buildPromptText')->andReturn('Mock context');
         $this->app->instance(LoomPlanService::class, $planService);
 
         $this->artisan('loom:plan', [
@@ -224,25 +231,17 @@ class LoomPlanCommandTest extends TestCase
             '--screenshots' => '0',
         ])->assertExitCode(0);
 
-        $this->assertFileExists("{$this->outputDir}/loom-plan-dashboard-redesign-walkthrough.md");
+        $this->assertFileExists("{$this->outputDir}/contexts/loom-plan-dashboard-redesign-walkthrough-context.md");
     }
 
     // ─── Template Selection ────────────────────────────────────────
 
     /** @test */
-    public function it_passes_template_to_plan_service(): void
+    public function it_accepts_template_option(): void
     {
         $this->mockVideoService();
         $this->mockScreenshotService();
-
-        $planService = Mockery::mock(LoomPlanService::class);
-        $planService->shouldReceive('generatePlan')
-            ->withArgs(function ($loomData, $screenshots, $template) {
-                return $template === 'bug';
-            })
-            ->once()
-            ->andReturn('# Bug Fix Plan');
-        $this->app->instance(LoomPlanService::class, $planService);
+        $this->mockPlanService();
 
         $this->artisan('loom:plan', [
             'url' => 'https://www.loom.com/share/a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4',
@@ -351,12 +350,12 @@ class LoomPlanCommandTest extends TestCase
 
         $capturedScreenshots = null;
         $planService = Mockery::mock(LoomPlanService::class);
-        $planService->shouldReceive('generatePlan')
-            ->withArgs(function ($loomData, $screenshots, $template) use (&$capturedScreenshots) {
+        $planService->shouldReceive('buildPromptText')
+            ->withArgs(function ($loomData, $screenshots) use (&$capturedScreenshots) {
                 $capturedScreenshots = $screenshots;
                 return true;
             })
-            ->andReturn('# Plan');
+            ->andReturn('Mock context');
         $this->app->instance(LoomPlanService::class, $planService);
 
         $this->artisan('loom:plan', [

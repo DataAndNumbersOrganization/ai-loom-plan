@@ -1,7 +1,7 @@
 {
     "name": "dan/ai-loom-planner",
-    "description": "Generate AI-powered implementation plans from Loom video walkthroughs.",
-    "keywords": ["laravel", "loom", "ai", "planning", "transcript", "prism"],
+    "description": "Generate context files and agent prompts from Loom video walkthroughs.",
+    "keywords": ["laravel", "loom", "ai", "planning", "transcript"],
     "license": "MIT",
     "homepage": "https://github.com/DataAndNumbersOrganization/ai-loom-plan",
     "support": {
@@ -18,8 +18,7 @@
         "php": "^8.2",
         "illuminate/console": "^11.0 || ^12.0 || ^13.0",
         "illuminate/http": "^11.0 || ^12.0 || ^13.0",
-        "illuminate/support": "^11.0 || ^12.0 || ^13.0",
-        "prism-php/prism": "^0.99 || ^0.100"
+        "illuminate/support": "^11.0 || ^12.0 || ^13.0"
     },
     "require-dev": {
         "orchestra/testbench": "^9.0 || ^10.0",

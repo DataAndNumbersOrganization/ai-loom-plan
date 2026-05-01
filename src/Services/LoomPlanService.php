@@ -2,74 +2,15 @@
 
 namespace Dan\AiLoomPlanner\Services;
 
-use Illuminate\Support\Facades\Log;
-use Prism\Prism\Facades\Prism;
-use Prism\Prism\ValueObjects\Media\Image;
-
 class LoomPlanService
 {
-    protected string $model;
-    protected string $provider;
     protected string $appName;
     protected string $techStack;
 
     public function __construct()
     {
-        $this->model = config('loom-planner.model', 'claude-sonnet-4-6');
-        $this->provider = config('loom-planner.provider', 'anthropic');
         $this->appName = config('loom-planner.app_name') ?? config('app.name', 'MyApp');
         $this->techStack = config('loom-planner.tech_stack') ?? $this->defaultTechStack();
-    }
-
-    /**
-     * Generate an implementation plan from Loom video data.
-     *
-     * @param  array<int, array{path: string, timestamp: int, label: string, formatted_time: string}>  $screenshots
-     */
-    public function generatePlan(array $loomData, array $screenshots = [], string $template = 'feature'): string
-    {
-        $context = $this->formatContext($loomData, $screenshots);
-        $prompt = $this->buildPrompt($context, $template);
-        $additionalContent = $this->buildImageContent($screenshots);
-
-        try {
-            $maxTokens = (int) config('loom-planner.max_tokens', 8000);
-
-            $response = Prism::text()
-                ->using($this->provider, $this->model)
-                ->withPrompt($prompt, $additionalContent)
-                ->withMaxTokens($maxTokens)
-                ->generate();
-
-            return trim($response->text);
-        } catch (\Throwable $e) {
-            Log::error('Failed to generate Loom implementation plan', ['error' => $e->getMessage()]);
-
-            return $this->generateFallbackPlan($context);
-        }
-    }
-
-    /**
-     * @return Image[]
-     */
-    protected function buildImageContent(array $screenshots): array
-    {
-        $images = [];
-
-        foreach ($screenshots as $screenshot) {
-            if (!empty($screenshot['path']) && file_exists($screenshot['path'])) {
-                try {
-                    $images[] = Image::fromLocalPath($screenshot['path']);
-                } catch (\Throwable $e) {
-                    Log::warning('Could not load screenshot for AI vision', [
-                        'path' => $screenshot['path'],
-                        'error' => $e->getMessage(),
-                    ]);
-                }
-            }
-        }
-
-        return $images;
     }
 
     protected function defaultTechStack(): string
@@ -128,32 +69,21 @@ class LoomPlanService
      *
      * @param  array<int, array{path: string, timestamp: int, label: string, formatted_time: string}>  $screenshots
      */
-    public function buildPromptText(array $loomData, array $screenshots = [], string $template = 'feature'): string
+    public function buildPromptText(array $loomData, array $screenshots = []): string
     {
         $context = $this->formatContext($loomData, $screenshots);
 
-        return $this->buildPrompt($context, $template);
+        return $this->buildPrompt($context);
     }
 
-    protected function templateGoal(string $template): string
-    {
-        return match ($template) {
-            'bug'           => 'diagnose the bug demonstrated and produce a fix plan',
-            'epic'          => 'break down the epic into discrete, prioritised implementation tasks',
-            'documentation' => 'convert this walkthrough into clear, admin-facing documentation (avoid technical jargon; target operations/support staff)',
-            default         => 'produce a comprehensive implementation plan for the feature described',
-        };
-    }
-
-    protected function buildPrompt(array $context, string $template = 'feature'): string
+    protected function buildPrompt(array $context): string
     {
         $contextJson = json_encode($context, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
         $appName = $this->appName;
         $techStack = $this->techStack;
-        $goal = $this->templateGoal($template);
 
         return <<<PROMPT
-You are a senior software engineer and technical lead analyzing a Loom video walkthrough. Your goal is to {$goal}.
+You are a senior software engineer and technical lead analyzing a Loom video walkthrough to create a comprehensive implementation plan.
 
 ## Context
 {$contextJson}
@@ -267,36 +197,6 @@ GUIDELINES;
         $formatted = implode("\n", $lines);
 
         return $this->truncateText($formatted, 10000);
-    }
-
-    protected function generateFallbackPlan(array $context): string
-    {
-        $title = $context['loom']['title'] ?? 'Unknown';
-        $url = $context['loom']['url'] ?? '#';
-        $duration = $context['loom']['duration_formatted'] ?? 'Unknown';
-
-        $plan = "# Implementation Plan: {$title}\n\n";
-        $plan .= "## 📋 Summary\n";
-        $plan .= "Implementation plan based on [Loom Video]({$url}) (Duration: {$duration})";
-        $plan .= "\n\n";
-
-        if (!empty($context['loom']['transcript'])) {
-            $plan .= "## 📝 Video Transcript\n";
-            $plan .= $context['loom']['transcript'] . "\n\n";
-        }
-
-        $plan .= "## 🎯 Requirements\n";
-        $plan .= "*To be defined after reviewing the video*\n\n";
-        $plan .= "## 🏗️ Technical Approach\n";
-        $plan .= "*To be defined based on requirements*\n\n";
-        $plan .= "## 📁 Affected Files\n";
-        $plan .= "*To be determined*\n\n";
-        $plan .= "## ✅ Acceptance Criteria\n";
-        $plan .= "*To be defined*\n\n";
-        $plan .= "---\n\n";
-        $plan .= "*Note: AI generation failed. This plan includes the raw transcript and requires manual completion.*\n";
-
-        return $plan;
     }
 
     protected function truncateText(string $text, int $maxLength): string

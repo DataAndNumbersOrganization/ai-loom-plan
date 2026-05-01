@@ -4,25 +4,10 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | AI Provider & Model
-    |--------------------------------------------------------------------------
-    */
-    'provider' => env('LOOM_PLAN_AI_PROVIDER', 'anthropic'),
-    'model' => env('LOOM_PLAN_AI_MODEL', 'claude-sonnet-4-6'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | Max Tokens
-    |--------------------------------------------------------------------------
-    */
-    'max_tokens' => env('LOOM_PLAN_MAX_TOKENS', 8000),
-
-    /*
-    |--------------------------------------------------------------------------
     | Tech Stack Description
     |--------------------------------------------------------------------------
     |
-    | Override the tech stack description injected into AI prompts.
+    | Override the tech stack description injected into the context prompt.
     | Set to null for the built-in default.
     |
     */

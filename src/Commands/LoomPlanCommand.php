@@ -2,10 +2,12 @@
 
 namespace Dan\AiLoomPlanner\Commands;
 
+use Dan\AiLoomPlanner\LoomPlannerServiceProvider;
 use Dan\AiLoomPlanner\Services\LoomPlanService;
 use Dan\AiLoomPlanner\Services\LoomScreenshotService;
 use Dan\AiLoomPlanner\Services\LoomVideoService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
@@ -17,7 +19,7 @@ class LoomPlanCommand extends Command
                             {--template=feature : Plan template — feature, bug, epic, or documentation}
                             {--output= : Custom output filename (defaults to video title based name)}';
 
-    protected $description = 'Generate an AI-powered implementation plan from a Loom video walkthrough';
+    protected $description = 'Generate a context file and agent prompt from a Loom video walkthrough';
 
     public function __construct(
         protected LoomVideoService $loomVideoService,
@@ -94,6 +96,12 @@ class LoomPlanCommand extends Command
 
         $filename = $this->determineFilename($customOutput, $loomData['title']);
 
+        // Ensure contexts directory exists
+        $contextsDir = "{$outputDir}/contexts";
+        if (!File::isDirectory($contextsDir)) {
+            File::makeDirectory($contextsDir, 0755, true);
+        }
+
         // Persist screenshots
         if (!empty($screenshots)) {
             $screenshots = $this->persistScreenshots(
@@ -105,21 +113,13 @@ class LoomPlanCommand extends Command
             );
         }
 
-        if (!empty($screenshots)) {
-            ini_set('memory_limit', '512M');
-        }
+        $contextMarkdown = $this->loomPlanService->buildPromptText($loomData, $screenshots);
+        $contextFilename = preg_replace('/\.md$/', '-context.md', $filename);
+        $contextPath = "{$contextsDir}/{$contextFilename}";
+        File::put($contextPath, $contextMarkdown);
 
-        $this->info('🤖 Generating implementation plan with AI...');
-        $plan = $this->loomPlanService->generatePlan($loomData, $screenshots, $template);
-
-        $outputPath = "{$outputDir}/{$filename}";
-        File::put($outputPath, $plan);
-
-        $this->newLine();
-        $this->info("✅ Implementation plan saved to: {$outputPath}");
-        $this->newLine();
-
-        $this->displaySummary($loomData, $outputPath, $screenshots);
+        $planPath = "{$outputDir}/{$filename}";
+        $this->outputAgentPrompt($template, $contextPath, $planPath, $screenshots);
 
         return 0;
     }
@@ -250,27 +250,50 @@ class LoomPlanCommand extends Command
         return Str::slug($shortText) ?: 'frame';
     }
 
-    protected function displaySummary(array $loomData, string $outputPath, array $screenshots = []): void
+    protected function outputAgentPrompt(string $template, string $contextPath, string $planPath, array $screenshots): void
     {
-        $this->line('📊 <fg=cyan>Summary</>');
-        $this->line('─────────────────────────────────────');
-        $this->line("  Video: <fg=yellow>{$loomData['title']}</>");
-        $this->line('  Duration: ' . LoomVideoService::formatDuration($loomData['duration']));
-        $this->line("  URL: {$loomData['url']}");
+        $screenshotLine = !empty($screenshots)
+            ? ' Screenshots from key moments in the video are attached below for visual context.'
+            : '';
 
-        if ($loomData['transcript_text']) {
-            $wordCount = str_word_count($loomData['transcript_text']);
-            $this->line("  Transcript: <fg=green>{$wordCount} words</>");
-        } else {
-            $this->line('  Transcript: <fg=red>Not available</>');
-        }
+        $prompt = $this->renderTemplate($template, [
+            'planPath' => $planPath,
+            'screenshotLine' => $screenshotLine,
+        ]);
 
-        if (!empty($screenshots)) {
-            $this->line('  Screenshots: <fg=green>' . count($screenshots) . ' captured</>');
-        }
-
-        $this->line('─────────────────────────────────────');
-        $this->line("  File: <fg=green>{$outputPath}</>");
         $this->newLine();
+        $this->line('─── Copy below ───');
+        $this->newLine();
+        $this->line(trim($prompt));
+        $this->newLine();
+        $this->line($contextPath);
+        foreach ($screenshots as $s) {
+            $this->line($s['path']);
+        }
+        $this->newLine();
+        $this->line('─── End ───');
     }
+
+    protected function renderTemplate(string $template, array $data): string
+    {
+        $templatesDir = config('loom-planner.templates_dir');
+
+        if ($templatesDir && file_exists("{$templatesDir}/{$template}.blade.php")) {
+            $templatePath = "{$templatesDir}/{$template}.blade.php";
+        } else {
+            $templatePath = LoomPlannerServiceProvider::packageResourcePath("templates/{$template}.blade.php");
+        }
+
+        if (!file_exists($templatePath)) {
+            $this->warn("Template '{$template}' not found at {$templatePath}, falling back to 'feature'");
+            $templatePath = LoomPlannerServiceProvider::packageResourcePath('templates/feature.blade.php');
+        }
+
+        if (!file_exists($templatePath)) {
+            return "Read the transcript and context file below, then build a detailed implementation plan.{$data['screenshotLine']} Save the implementation plan to `{$data['planPath']}`."];
+        }
+
+        return Blade::render(file_get_contents($templatePath), $data);
+    }
+
 }
