@@ -5,7 +5,22 @@ All notable changes to `dan/ai-loom-planner` will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0] - 2026-05-01
+## [3.0.1] - 2026-05-01
+
+### Fixed
+
+- Repaired a parse error in `LoomPlanCommand::renderTemplate()` introduced
+  by the v3.0.0 refactor (stray `]` after the fallback prompt string).
+  The package now passes `php -l` cleanly across all 18 PHP files.
+
+### Removed
+
+- Dropped four orphaned unit tests in `LoomPlanServiceTest` that targeted
+  the removed `LoomPlanService::generatePlan()` method (the AI-call path
+  was retired alongside the `--ai` flag in an earlier change). 61 tests
+  remain, all green.
+
+## [1.0.3] - 2026-04-29
 
 ### Removed
 
@@ -113,6 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Laravel 11.x, 12.x, and 13.x support.
 - PHPUnit test suite with Orchestra Testbench.
 
+[3.0.1]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v3.0.1
 [3.0.0]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v3.0.0
 [2.0.0]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v2.0.0
 [1.0.3]: https://github.com/DataAndNumbersOrganization/ai-loom-plan/releases/tag/v1.0.3

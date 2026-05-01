@@ -290,7 +290,7 @@ class LoomPlanCommand extends Command
         }
 
         if (!file_exists($templatePath)) {
-            return "Read the transcript and context file below, then build a detailed implementation plan.{$data['screenshotLine']} Save the implementation plan to `{$data['planPath']}`."];
+            return "Read the transcript and context file below, then build a detailed implementation plan.{$data['screenshotLine']} Save the implementation plan to `{$data['planPath']}`.";
         }
 
         return Blade::render(file_get_contents($templatePath), $data);
